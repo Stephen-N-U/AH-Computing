@@ -1,1 +1,916 @@
-print("hello world)
+
+import customtkinter as ctk
+import os
+import pyodbc
+import textwrap
+
+
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+app = ctk.CTk()
+app.title("Stream+")
+app.geometry("650x600")
+
+
+def getMovie():
+
+    class movie():
+        def __init__(self, title, year, description, rating, streamingService):
+            self.title = title
+            self.year = year
+            self.description = description
+            self.rating = rating
+            self.streamingService = streamingService
+
+   
+    #open connection to database
+    
+    ACCESS_DB_PATH = r"C:\Users\cyril\Documents\Stephen\Advanced Higher Computing\Project Folder\database.accdb"
+    
+    conn = None    # to prevent unbound error
+    cur = None
+    results = [] 
+    try:
+        conn = pyodbc.connect(r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"f"DBQ={ACCESS_DB_PATH};")
+        cur = conn.cursor()
+        cur.execute("SELECT title, releaseyear, description, ratings, streamingservice FROM moviedetails")
+        results = cur.fetchall()
+       
+    except Exception as e:
+        print("An error occurred: ", e)
+    finally:
+        if cur is not None:
+            cur.close()
+        if conn is not None:
+            conn.close()
+    #populate movies with db
+    movieDetails = []
+   
+    for row in results:
+        movieDetails.append(movie(*row))
+
+    return movieDetails
+
+
+def getLogin():
+
+    class login():
+        def __init__(self, username, password):
+            self.username = username
+            self.password = password
+
+    loginDetails = []
+   
+    #open connection to database
+    ACCESS_DB_PATH = r"C:\Users\cyril\Documents\Stephen\Advanced Higher Computing\Project Folder\database.accdb"
+    cur = None   #initialising variable to prevent unbound error
+    conn = None
+    results = [] # to prevent unbound error
+    try:
+        conn = pyodbc.connect(r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"f"DBQ={ACCESS_DB_PATH};")
+        cur = conn.cursor()
+        cur.execute("SELECT username, password FROM userdetails")
+        results = cur.fetchall()
+
+    except Exception as e:  # for personal debug purposes
+        print("An error occurred: ", e)
+       
+    finally:
+        if cur is not None:
+            cur.close()
+        if conn is not None:
+            conn.close()
+
+
+    #populate login details with db
+    loginDetails = []
+    for row in results:
+        loginDetails.append(login(*row))
+
+    return loginDetails
+
+
+#----------Login UI Building code-------------------------------------
+def loginPage():
+    
+    def checkLogin():  # input validation FR8
+        checkValid = False
+        admin = False
+        username = loginUsername.get()
+        password = loginPassword.get()
+       
+        loginDetails = getLogin()
+       
+        
+        if password == "" or username == "":
+            loginStatus.configure(text="Username or password fied cannot be empty",text_color="#ff0000")
+           
+        elif password == "admin123" and username == "admin":
+            admin = True
+            
+        else:
+            for i in range(len(loginDetails)):
+                if username == loginDetails[i].username and password == loginDetails[i].password:
+                    checkValid = True  #compares to array of records to check if user exists
+
+                           
+
+        if checkValid:
+            customer()
+            app.withdraw()  # hides the login page that was shown
+
+        elif admin:
+            staff()
+            app.withdraw()
+
+        else:
+            loginStatus.configure(text="Incorrect Username or Password",text_color="#ff0000")
+               
+
+           
+
+
+    def createLogin():
+        checkValid = False
+        password = signupPassword.get()
+        username = signupUsername.get()
+        if password == "" or username == "":
+            signupStatus.configure(text="Username or password field cannot be empty",text_color="#ff0000")
+
+        else:
+            checkValid = True
+            signupStatus.configure(text="Succesfully added Signup Details",text_color="#07E007")
+
+        if checkValid: #open connection to db and add sign up details
+            ACCESS_DB_PATH = r"C:\Users\cyril\Documents\Stephen\Advanced Higher Computing\Project Folder\database.accdb"
+           
+            conn = None
+            cur = None
+            try:
+                conn = pyodbc.connect(r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"f"DBQ={ACCESS_DB_PATH};")
+                cur = conn.cursor()
+                # Insert signUp details into the database
+                insert_query = """INSERT INTO "userdetails" (username, password) VALUES (?, ?);"""
+                cur.execute(insert_query, (username, password))
+                conn.commit()  # Commit changes to the database
+               
+            except Exception as e: # for personal debug purposes
+                print("An error occurred: ", e)
+               
+            finally:
+                if cur is not None:
+                    cur.close()
+                if conn is not None:
+                    conn.close()
+
+
+    title = ctk.CTkLabel(app,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+    title.place(rely=0.01, relwidth=1, relheight=0.18)  #Relative placement
+
+    #the page switch at the top
+    tabButton = ctk.CTkTabview(app,fg_color="#18181a",border_color=("#18181a"),height=270,width=270,corner_radius=12)
+    tabButton.add("Login")
+    tabButton.add("SignUp")
+    tabButton.place(relx=0.15, rely=0.2, relwidth=0.7, relheight=0.7)
+
+    loginTab = tabButton.tab("Login")
+    loginLabel = ctk.CTkLabel(loginTab,text="Login",fg_color="#18181a",font=("Helvetica", 35))
+    loginLabel.place(rely=0.01, relx=0.5, anchor='n')  # n means north so it centres horizontaly but not vertically
+
+    loginUsername = ctk.CTkEntry(loginTab,corner_radius=12,placeholder_text="Enter Your Username.....",height=45,width=300)
+
+    loginPassword = ctk.CTkEntry(loginTab,placeholder_text="Enter Your Password.....",height=45,width=300,corner_radius=12)
+    loginUsername.place(relx=0.5, rely=0.2, anchor="n")
+    loginPassword.place(relx=0.5, rely=0.4, anchor="n")
+    loginButton = ctk.CTkButton(loginTab,corner_radius=12,text="Login",height=45,width=300,command=checkLogin)
+    loginButton.place(relx=0.5, rely=0.6, anchor="n")
+
+    signupTab = tabButton.tab("SignUp")  # copy pasting the login code
+    signupLabel = ctk.CTkLabel(signupTab,text="SignUp",fg_color="#18181a",font=("Helvetica", 35))
+    signupLabel.place(rely=0.01, relx=0.5, anchor='n')  # i used trial and error to get all relative positions :( insanely time consuming
+
+    signupUsername = ctk.CTkEntry(signupTab,placeholder_text="Enter Your Username.....",height=45,width=300,corner_radius=12)
+    signupPassword = ctk.CTkEntry(signupTab,corner_radius=12,placeholder_text="Enter Your Password.....",height=45,width=300)
+    signupUsername.place(relx=0.5, rely=0.2, anchor="n")
+    signupPassword.place(relx=0.5, rely=0.4, anchor="n")
+    signupButton = ctk.CTkButton(signupTab,corner_radius=12,text="SignUp",height=45,width=300,command=createLogin)
+    signupButton.place(relx=0.5, rely=0.6, anchor="n")
+
+    loginStatus = ctk.CTkLabel(loginTab,text="",fg_color=None,font=("Helvetica", 23))
+    loginStatus.place(relx=0.5, rely=0.8, anchor="n")
+
+    signupStatus = ctk.CTkLabel(signupTab,text="",fg_color=None,font=("Helvetica", 23))
+    signupStatus.place(relx=0.5, rely=0.8, anchor="n")
+
+
+def customer():
+    movies = getMovie()
+    customerPage = ctk.CTkToplevel(app)
+    customerPage.title("Customer Portal")
+    customerPage.geometry("650x600")
+
+    def logout():
+        customerPage.destroy()
+        app.deiconify()  #brings back the login page
+
+    def createMovie(movie, row, col, container,parentPage):  #this is the code that handles the view movie details
+       
+        def viewDetails():
+            parentPage.withdraw()  # hide main page
+            detailPage = ctk.CTkToplevel(customerPage)
+            detailPage.geometry("650x600")
+            detailPage.title(movie.title)
+
+            # Movie details labels
+
+            def goHome():
+                detailPage.withdraw()
+                parentPage.deiconify()  # bring back main page
+
+            #-----start of code needed for staff too for personal ref--
+            backButton = ctk.CTkButton(detailPage,text="←   Back",command=goHome)
+            backButton.place(relx=0.05, rely=0.05)
+            
+            topLabel = ctk.CTkLabel(detailPage,font=("Helvetica", 20),text="Customer",text_color="white")
+            topLabel.place(relx=0.7, rely=0.08)
+            
+            wrapped_titleLabel = textwrap.fill(movie.title, width=30)
+            titleLabel = ctk.CTkLabel(detailPage,text=wrapped_titleLabel,font=("Helvetica", 25))
+            titleLabel.place(relx=0.1, rely=0.13)
+           
+            releaseLabel = ctk.CTkLabel(detailPage,text="Release Year: " + str(movie.year),fg_color="#18181a",height=45,width=200)
+            releaseLabel.place(relx=0.65, rely=0.3)
+
+            wrapped_desc = textwrap.fill(movie.description, width=50)  # width = chars per line
+            movieDesc = ctk.CTkLabel(detailPage, text=wrapped_desc, fg_color="#18181a", justify="left")
+            movieDesc.place(relx=0.1, rely=0.25, relheight=0.6, relwidth=0.5)
+
+            movieRating = ctk.CTkLabel(detailPage,text="Ratings: " + str(movie.rating) +"/5",fg_color="#18181a",height=45,width=200)
+            movieRating.place(relx=0.65, rely=0.4)
+           
+            movieSS = ctk.CTkLabel(detailPage,text="Sreaming Services:\n" +str(movie.streamingService),fg_color="#18181a",height=200,width=200)
+            movieSS.place(relx=0.65, rely=0.5)
+
+            #end of needed code---------------------
+        wrapped_title = textwrap.fill(movie.title, width=15)
+        movieButton = ctk.CTkButton(container, text=wrapped_title, width=170, height=160,command=viewDetails)
+        movieButton.grid(row=row, column=col, padx=10, pady=10)
+
+    def search():  #another code that staff doesnt have
+        searchboxInput = searchBox.get()
+        searchboxInput = searchboxInput.lower()
+        if searchboxInput != "":
+            searchResults = []
+            
+            for movie in movies:
+                    if searchboxInput in movie.title.lower():
+                        searchResults.append(movie)
+                        
+            searchResultWindow = ctk.CTkToplevel(customerPage)
+            customerPage.withdraw()
+            searchResultWindow.geometry("650x600")
+            searchResultWindow.title("search results")
+
+            def goHome():
+                searchResultWindow.withdraw()
+                customerPage.deiconify()
+
+            homeButton = ctk.CTkButton(searchResultWindow,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(searchResultWindow,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(searchResultWindow,font=("Helvetica", 17),text="Customer",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+
+            searchResultStatus = ctk.CTkLabel(searchResultWindow,text="",font=("Helvetica", 19))
+            searchResultStatus.place(relx=0.1, rely=0.27)
+
+            searchResultsDisplay = ctk.CTkScrollableFrame(searchResultWindow,width=580,height=350)
+            searchResultsDisplay.place(relx=0.06, rely=0.35)
+
+            if len(searchResults) == 0:
+                searchResultStatus.configure(text=f"no search results found containing keyword: {searchboxInput}",text_color = "#ff0000")
+                
+            else:
+                searchResultStatus.configure(text=f"Search results containing keyword: {searchboxInput}")
+                
+
+
+
+            columns = 3
+            for index, movie in enumerate(searchResults):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, searchResultsDisplay,customerPage)
+
+    def sortBy(choice):  # start of code that staff doesnt have
+        if choice == "top rated":  # insertion sort but works in descending order
+            for index in range(1, len(movies)):
+                currentrating = movies[index]
+                position = index
+                while position > 0 and movies[position -1].rating < currentrating.rating:
+                    movies[position] = movies[position - 1]
+                    position = position - 1
+
+                movies[position] = currentrating
+            # create sorted page
+            sortedPage = ctk.CTkToplevel(customerPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            customerPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                customerPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Customer",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+           
+            sortedStatus = ctk.CTkLabel(sortedPage,text="Sorting movies by Ratings",font=("Helvetica", 19))
+            sortedStatus.place(relx=0.32, rely=0.27)
+
+            sortedDisplay = ctk.CTkScrollableFrame(sortedPage,width=580,height=350)
+            sortedDisplay.place(relx=0.06, rely=0.35)
+                       
+            columns = 3
+            for index, movie in enumerate(movies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, sortedDisplay, sortedPage)
+
+        elif choice == "latest":
+            for index in range(1, len(movies)):
+                currentyear = movies[index]
+                position = index
+                while position > 0 and movies[position -1].year < currentyear.year:
+                    movies[position] = movies[position - 1]
+                    position = position - 1
+
+                movies[position] = currentyear
+
+            # Copy past code
+            sortedPage = ctk.CTkToplevel(customerPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            customerPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                customerPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Customer",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+           
+            sortedStatus = ctk.CTkLabel(sortedPage,text="Sorting movies by release year",font=("Helvetica", 19))
+            sortedStatus.place(relx=0.32, rely=0.27)
+
+            sortedDisplay = ctk.CTkScrollableFrame(sortedPage,width=580,height=350)
+            sortedDisplay.place(relx=0.06, rely=0.35)
+           
+            columns = 3
+            for index, movie in enumerate(movies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, sortedDisplay, sortedPage)
+
+        elif choice == "streaming service":
+            netflixMovies = []
+            disneyMovies = []
+            amazonMovies = []
+            otherMovies = []
+            for index in range(len(movies)):
+                if movies[index].streamingService == "Netflix":
+                    netflixMovies.append(movies[index])
+                    
+                elif movies[index].streamingService == "Disney":
+                    disneyMovies.append(movies[index])
+
+                elif movies[index].streamingService == "Amazon Prime Video":
+                    amazonMovies.append(movies[index])
+
+                else:
+                    otherMovies.append(movies[index])
+
+            # different sorted page
+            sortedPage = ctk.CTkToplevel(customerPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            customerPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                customerPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Customer",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+
+            serviceChoice = ctk.CTkTabview(sortedPage, width=625, height=375)
+            serviceChoice.place(relx=0.03, rely=0.3)
+            serviceChoice.add("Netflix")
+            serviceChoice.add("Disney")
+            serviceChoice.add("Amazon")
+            serviceChoice.add("Other")
+
+            scroll1 = ctk.CTkScrollableFrame(serviceChoice.tab("Netflix"),width=575,height=400)
+            scroll1.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(netflixMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll1, sortedPage)
+
+            scroll2 = ctk.CTkScrollableFrame(serviceChoice.tab("Disney"),width=575,height=400)
+            scroll2.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(disneyMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll2, sortedPage)
+               
+            scroll3 = ctk.CTkScrollableFrame(serviceChoice.tab("Amazon"),width=575,height=400)
+            scroll3.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(amazonMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll3, sortedPage)
+               
+            scroll4 = ctk.CTkScrollableFrame(serviceChoice.tab("Other"),width=575,height=400)
+            scroll4.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(otherMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll4, sortedPage)
+
+    title = ctk.CTkLabel(customerPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+    title.place(rely=0.01, relwidth=1, relheight=0.18)  #Relative placement
+
+    topLabel = ctk.CTkLabel(customerPage,font=("Helvetica", 17),text="Customer",text_color="white",fg_color="#18181a")
+    topLabel.place(relx=0.65, rely=0.08)
+
+    logoutButton = logoutButton = ctk.CTkButton(customerPage,corner_radius=6,text="Logout",bg_color="#18181a",command=logout,)
+    logoutButton.place(relx=0.80, rely=0.07, relwidth=0.15,relheight=0.05)  #more trial and error values
+
+    searchBox = ctk.CTkEntry(customerPage,placeholder_text="Enter the movie youre searching for.........",corner_radius=8)
+    searchBox.place(relx=0.02, rely=0.2, relheight=0.07, relwidth=0.75)
+
+    searchButton = ctk.CTkButton(customerPage,corner_radius=8,text="Search",command=search)
+    searchButton.place(relx=0.79, rely=0.2, relheight=0.07, relwidth=0.17)
+
+    filterButton = ctk.CTkOptionMenu(master=customerPage,values=["latest", "top rated", "streaming service"],command=sortBy)
+    filterButton.set("Sort By")  # default selection look
+
+    filterButton.place(relx=0.02, rely=0.29)
+
+    browsePage = ctk.CTkScrollableFrame(customerPage, )
+    browsePage.place(relx=0.49,rely=0.39,anchor="n",relwidth=0.94,relheight=0.6)
+    # Populate movies in grid
+   
+    columns = 3
+    for index, movie in enumerate(movies):
+        row = index // columns
+        col = index % columns
+        createMovie(movie, row, col, browsePage, customerPage)
+
+
+def staff():
+    movies = getMovie()
+    staffPage = ctk.CTkToplevel(app)
+    staffPage.title("Staff Portal")
+    staffPage.geometry("650x600")
+
+    def logout():
+        staffPage.destroy()
+        app.deiconify()
+
+    def createMovie(movie, row, col, container, parentPage):  #this is the code that handles the view movie details
+
+        def viewDetails():
+            parentPage.withdraw()  # hide main page
+            detailPage = ctk.CTkToplevel(staffPage)
+            detailPage.geometry("650x600")
+            detailPage.title(movie.title)
+
+            # Movie details labels
+
+            def goHome():
+                detailPage.withdraw()
+                parentPage.deiconify()  # bring back main page
+
+            homeButton = ctk.CTkButton(detailPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.05)
+            
+            topLabel = ctk.CTkLabel(detailPage,font=("Helvetica", 20),text="Staff",text_color="white")
+            topLabel.place(relx=0.7, rely=0.08)
+            
+            titleLabel = ctk.CTkLabel(detailPage,text=movie.title,font=("Helvetica", 30))
+            titleLabel.place(relx=0.1, rely=0.15)
+           
+            wrapped_desc = textwrap.fill(movie.description, width=50)  # width = chars per line
+            movieDesc = ctk.CTkLabel(detailPage, text=wrapped_desc, fg_color="#18181a", justify="left") #justify just means left align
+            movieDesc.place(relx=0.1, rely=0.25, relheight=0.6, relwidth=0.5)
+
+            movieRating = ctk.CTkLabel(detailPage,text="Ratings: " + str(movie.rating) +"/5",fg_color="#18181a",height=45,width=200)
+            movieRating.place(relx=0.65, rely=0.4)
+           
+            movieSS = ctk.CTkLabel(detailPage,text="Sreaming Services:\n" +str(movie.streamingService),fg_color="#18181a",height=200,width=200)
+            movieSS.place(relx=0.65, rely=0.5)
+
+         
+        wrapped_title = textwrap.fill(movie.title, width=15)
+        movieButton = ctk.CTkButton(container, text=wrapped_title, width=170, height=160,command=viewDetails)
+        movieButton.grid(row=row, column=col, padx=10, pady=10)
+
+    def search():  #another code that staff doesnt have
+        searchboxInput = searchBox.get()
+        searchboxInput = searchboxInput.lower()
+        
+        if searchboxInput != "":
+            searchResults = []
+            for movie in movies:
+                    if searchboxInput in movie.title.lower():
+                        searchResults.append(movie)
+                        
+            
+                        
+            searchResultWindow = ctk.CTkToplevel(staffPage)
+            staffPage.withdraw()
+            searchResultWindow.geometry("650x600")
+            searchResultWindow.title("search results")
+
+            def goHome():
+                searchResultWindow.withdraw()
+                staffPage.deiconify()
+
+            homeButton = ctk.CTkButton(searchResultWindow,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(searchResultWindow,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(searchResultWindow,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+
+            searchResultStatus = ctk.CTkLabel(searchResultWindow,text="",font=("Helvetica", 20))
+            searchResultStatus.place(relx=0.1, rely=0.27)
+
+            searchResultsDisplay = ctk.CTkScrollableFrame(searchResultWindow,width=580,height=350)
+            searchResultsDisplay.place(relx=0.06, rely=0.35)
+            
+            if len(searchResults) == 0:
+                searchResultStatus.configure(text=f"no search results found containing keyword: {searchboxInput}",text_color ="#ff0000")
+            else:
+                searchResultStatus.configure(text=f"Search results containing keyword: {searchboxInput}")
+                
+
+
+
+            columns = 3
+            for index, movie in enumerate(searchResults):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, searchResultsDisplay, staffPage)
+
+    def sortBy(choice):  # start of code that staff doesnt have
+        if choice == "top rated":  # insertion sort but works in descending order
+            for index in range(1, len(movies)):
+                currentrating = movies[index]
+                position = index
+                while position > 0 and movies[position -1].rating < currentrating.rating:
+                    movies[position] = movies[position - 1]
+                    position = position - 1
+
+                movies[position] = currentrating
+            # create sorted page
+            sortedPage = ctk.CTkToplevel(staffPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            staffPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                staffPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+           
+            sortedStatus = ctk.CTkLabel(sortedPage,text="Sorting movies by Ratings",font=("Helvetica", 19))
+            sortedStatus.place(relx=0.32, rely=0.27)
+
+            sortedDisplay = ctk.CTkScrollableFrame(sortedPage,width=580,height=350)
+            sortedDisplay.place(relx=0.06, rely=0.35)
+           
+            columns = 3
+            for index, movie in enumerate(movies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, sortedDisplay, sortedPage)
+
+        elif choice == "latest":
+            for index in range(1, len(movies)):
+                currentyear = movies[index]
+                position = index
+                while position > 0 and movies[position -
+                                              1].year < currentyear.year:
+                    movies[position] = movies[position - 1]
+                    position = position - 1
+
+                movies[position] = currentyear
+
+            # Copy past code
+            sortedPage = ctk.CTkToplevel(staffPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            staffPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                staffPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+           
+            sortedStatus = ctk.CTkLabel(sortedPage,text="Sorting movies by release year",font=("Helvetica", 19))
+            sortedStatus.place(relx=0.32, rely=0.27)
+
+            sortedDisplay = ctk.CTkScrollableFrame(sortedPage,width=580,height=350)
+            sortedDisplay.place(relx=0.06, rely=0.35)
+            columns = 3
+            for index, movie in enumerate(movies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, sortedDisplay, sortedPage)
+
+        elif choice == "streaming service":
+            netflixMovies = []
+            disneyMovies = []
+            amazonMovies = []
+            otherMovies = []
+
+            for index in range(len(movies)):
+                if movies[index].streamingService == "Netflix":
+                    netflixMovies.append(movies[index])
+
+                elif movies[index].streamingService == "Disney":
+                    disneyMovies.append(movies[index])
+                    pass
+                elif movies[index].streamingService == "Amazon Prime Video":
+                    amazonMovies.append(movies[index])
+
+                else:
+                    otherMovies.append(movies[index])
+
+            # different sorted page
+            sortedPage = ctk.CTkToplevel(staffPage, )
+            sortedPage.geometry("650x600")
+            sortedPage.title("Sorted results")
+            staffPage.withdraw()
+
+            def goHome():
+                sortedPage.withdraw()
+                staffPage.deiconify()
+
+            homeButton = ctk.CTkButton(sortedPage,text="←   Home",command=goHome)
+            homeButton.place(relx=0.05, rely=0.22)
+           
+            title = ctk.CTkLabel(sortedPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+
+            title.place(rely=0.01, relwidth=1,relheight=0.18)  #Relative placement
+
+            topLabel = ctk.CTkLabel(sortedPage,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+            topLabel.place(relx=0.65, rely=0.08)
+
+            serviceChoice = ctk.CTkTabview(sortedPage, width=625, height=375)
+            serviceChoice.place(relx=0.03, rely=0.3)
+            serviceChoice.add("Netflix")
+            serviceChoice.add("Disney")
+            serviceChoice.add("Amazon")
+            serviceChoice.add("Other")
+
+            scroll1 = ctk.CTkScrollableFrame(serviceChoice.tab("Netflix"),width=575,height=400)
+            scroll1.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(netflixMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll1, sortedPage)
+
+            scroll2 = ctk.CTkScrollableFrame(serviceChoice.tab("Disney"),width=575,height=400)
+            scroll2.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(disneyMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll2, sortedPage)
+               
+            scroll3 = ctk.CTkScrollableFrame(serviceChoice.tab("Amazon"),width=575,height=400)
+            scroll3.place(relx=0.005, rely=0.02)
+           
+            columns = 3
+            for index, movie in enumerate(amazonMovies):
+                row = index // columns
+                col = index % columns
+                createMovie(movie, row, col, scroll3, sortedPage)
+               
+            scroll4 = ctk.CTkScrollableFrame(serviceChoice.tab("Other"),width=575,height=400)
+            scroll4.place(relx=0.005, rely=0.02)
+            columns = 3
+            for index, movie in enumerate(otherMovies):
+                row = index // columns
+                col = index % columns
+
+                createMovie(movie, row, col, scroll4, sortedPage)
+
+
+    title = ctk.CTkLabel(staffPage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+    title.place(rely=0.01, relwidth=1, relheight=0.18)  #Relative placement
+
+    topLabel = ctk.CTkLabel(staffPage,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+    topLabel.place(relx=0.65, rely=0.08)
+
+    logoutButton = logoutButton = ctk.CTkButton(staffPage,corner_radius=6,text="Logout",bg_color="#18181a",command=logout,)
+    logoutButton.place(relx=0.80, rely=0.07, relwidth=0.15,relheight=0.05)  #more trial and error values
+
+    searchBox = ctk.CTkEntry(staffPage,placeholder_text="Enter the movie youre searching for.........",corner_radius=8)
+    searchBox.place(relx=0.02, rely=0.2, relheight=0.07, relwidth=0.75)
+
+    searchButton = ctk.CTkButton(staffPage,corner_radius=8,text="Search",command=search)
+    searchButton.place(relx=0.79, rely=0.2, relheight=0.07, relwidth=0.17)
+
+    sortByButton = ctk.CTkOptionMenu(master=staffPage,values=["latest", "top rated", "streaming service"],command=sortBy)
+    sortByButton.set("Sort By")  # default selection look
+
+    sortByButton.place(relx=0.02, rely=0.29)
+
+    browsePage = ctk.CTkScrollableFrame(staffPage, )
+    browsePage.place(relx=0.49,rely=0.39,anchor="n",relwidth=0.94,relheight=0.6)
+    # Populate movies in grid
+    columns = 3
+    for index, movie in enumerate(movies):
+        row = index // columns
+        col = index % columns
+
+        createMovie(movie, row, col, browsePage, staffPage)
+
+    def addMovie():
+        staffPage.withdraw()
+        addMoviePage = ctk.CTkToplevel(staffPage)
+        addMoviePage.title("add movie")
+        addMoviePage.geometry("650x600")
+
+        def goHome():
+            addMoviePage.withdraw()
+            staff() #so it updates database
+
+        def addMovieToDb():  #input validation
+            valid = False
+            title = movieTitle.get()
+            year = movieReleaseYear.get()
+            desc = movieDescription.get()
+            rating = movieRating.get()
+            ss = movieSS.get()
+            
+            if title == "" or year == "" or desc == "" or rating == "" or ss == "":
+                addMovieStatus.configure(text="Fields cannot be empty",text_color="red")
+
+            elif not year.isdigit():  # checks if its an integer
+                addMovieStatus.configure(text="Release year must be integer",text_color="red")
+
+            elif not rating.isdigit():
+                addMovieStatus.configure(text="Ratings must be integer",text_color="red")
+
+            elif int(rating) < 1 or int(rating) > 5:
+                addMovieStatus.configure(text="Ratings must be between 1 - 5",text_color="red")
+                
+            elif int(year) < 0:
+                addMovieStatus.configure(text="Release year must be greater than 0 ",text_color="red")
+            else:
+                valid = True
+                addMovieStatus.configure(text=movieTitle.get() +" Succesfully added",text_color="#0BDA51")
+
+            if valid:
+                #open connection to db and execute insert query
+                ACCESS_DB_PATH = r"C:\Users\cyril\Documents\Stephen\Advanced Higher Computing\Project Folder\database.accdb"
+                
+                
+
+                conn = None
+                cur = None
+                try:
+                    conn = pyodbc.connect(r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"f"DBQ={ACCESS_DB_PATH};")
+                    cur = conn.cursor()
+                    # Insert signUp details into the database
+                    insert_query = '''INSERT INTO "moviedetails" (title,releaseyear,description,ratings,streamingservice) VALUES (?, ?,?,?,?);'''
+                    cur.execute(insert_query, (title,int(year),desc,int(rating),ss))
+                    conn.commit()  # Commit changes to the database
+
+                except Exception as e: # for personal debug purposes
+                    print("An error occurred: ", e)
+                    addMovieStatus.configure(text="Failed to add movie to DB", text_color="red")
+
+                finally:
+                    if cur is not None:
+                        cur.close()
+                    if conn is not None:
+                        conn.close()
+ 
+
+        title = ctk.CTkLabel(addMoviePage,text="   ✮ Stream+ ",fg_color="#18181a",font=("Helvetica", 37),anchor="w",text_color="white")
+        title.place(rely=0.01, relwidth=1, relheight=0.18)
+       
+        topLabel = ctk.CTkLabel(addMoviePage,font=("Helvetica", 17),text="Staff",text_color="white",fg_color="#18181a")
+        topLabel.place(relx=0.7, rely=0.08)
+       
+        homeButton = ctk.CTkButton(addMoviePage,text="←   Home",command=goHome)
+        homeButton.place(relx=0.05, rely=0.2)
+
+        movieTitle = ctk.CTkEntry(addMoviePage)
+        movieTitle.place(relx=0.4, rely=0.3, relheight=0.07, relwidth=0.5)
+
+        movieTitleLabel = ctk.CTkLabel(addMoviePage,text="Title: ",font=("Helvetica", 20))
+        movieTitleLabel.place(relx=0.15,rely=0.3,relheight=0.07,relwidth=0.2)
+
+        movieReleaseYear = ctk.CTkEntry(addMoviePage)
+        movieReleaseYear.place(relx=0.4,rely=0.39,relheight=0.07,relwidth=0.5)
+
+        movieReleaseYearLabel = ctk.CTkLabel(addMoviePage,text="Release Year: ",font=("Helvetica", 20))
+        movieReleaseYearLabel.place(relx=0.1,rely=0.39,relheight=0.07,relwidth=0.3)
+
+        movieDescription = ctk.CTkEntry(addMoviePage)
+        movieDescription.place(relx=0.4,rely=0.48,relheight=0.07,relwidth=0.5)
+
+        movieDescriptionLabel = ctk.CTkLabel(addMoviePage,text="Description: ",font=("Helvetica", 20))
+        movieDescriptionLabel.place(relx=0.1,rely=0.48,relheight=0.07,relwidth=0.3)
+
+        movieRating = ctk.CTkEntry(addMoviePage)
+        movieRating.place(relx=0.4, rely=0.57, relheight=0.07, relwidth=0.5)
+
+        movieRatingLabel = ctk.CTkLabel(addMoviePage,text="Ratings(1-5): ",font=("Helvetica", 20))
+        movieRatingLabel.place(relx=0.1,rely=0.57,relheight=0.07,relwidth=0.3)
+
+        movieSS = ctk.CTkEntry(addMoviePage)  #ss = streamingservice
+        movieSS.place(relx=0.4, rely=0.66, relheight=0.07, relwidth=0.5)
+
+        movieSSLabel = ctk.CTkLabel(addMoviePage,text="Streaming Service: ",font=("Helvetica", 20))
+        movieSSLabel.place(relx=0.1, rely=0.66, relheight=0.07, relwidth=0.3)
+
+        addMovieButtonSite = ctk.CTkButton(addMoviePage,text='Add Movie',command=addMovieToDb)
+        addMovieButtonSite.place(relx=0.73,rely=0.75,relheight=0.07,relwidth=0.17)
+
+        addMovieStatus = ctk.CTkLabel(addMoviePage,text="",font=("Helvetica", 25))
+        addMovieStatus.place(rely=0.85, relx=0.2)
+        # open connection to database and add movies to DB
+
+    staffAddMovie = ctk.CTkButton(staffPage,text = "Add Movie",command = addMovie)
+    staffAddMovie.place(relx=0.79, rely=0.29,relwidth=0.17)
+
+def main():
+    loginPage()
+
+
+main()
+
+app.mainloop()
